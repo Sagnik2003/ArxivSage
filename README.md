@@ -8,15 +8,6 @@ are declined instead of answered from model knowledge.
 
 The system runs entirely **locally at no cost**: open data, open models, an embedded vector database and a single GPU.
 
-## Demo
-
-<p align="center"><img src="docs/chat_ui_demo.png" alt="ArxivSage chat interface" width="85%"></p>
-
-Chat interface from notebook 04, showing a real session. The follow-up *"Which of those methods don't need
-any extra training?"* is rewritten into a standalone query from the conversation (*searched for* line),
-answers stream token by token with numbered citations, and the status line reports per-stage latency
-(first token after ~4–5 s).
-
 ---
 
 ## Architecture
@@ -33,6 +24,15 @@ answers stream token by token with numbered citations, and the status line repor
 5. **Re-rank.** A cross-encoder scores each (question, chunk) pair and keeps the best chunk per paper: top 6 papers.
 6. **Relevance check.** If the best score is below 0.05, the system abstains without calling the LLM.
 7. **Answer.** Qwen3.5-9B answers only from the 6 numbered sources and cites each claim as [n] (streamed in notebook 04).
+
+## Demo
+
+<p align="center"><img src="docs/chat_ui_demo.png" alt="ArxivSage chat interface" width="85%"></p>
+
+Chat interface from notebook 04, showing a real session. The follow-up *"Which of those methods don't need
+any extra training?"* is rewritten into a standalone query from the conversation (*searched for* line),
+answers stream token by token with numbered citations, and the status line reports per-stage latency
+(first token after ~4–5 s).
 
 ## Tech stack
 
