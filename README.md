@@ -60,6 +60,7 @@ answers stream token by token with numbered citations, and the status line repor
 | Chunks | **257,025** (mostly 2 per abstract, 14–139 words) |
 | Fields | title, abstract, authors, categories, submission month, URL |
 | Disk | ~3.5 GB total (raw 0.2 GB, embeddings 1 GB, Weaviate 1.9 GB) |
+| Download | prebuilt papers, chunks and embeddings: [`Sagnik2003/arxivsage-cv-nlp`](https://huggingface.co/datasets/Sagnik2003/arxivsage-cv-nlp) on the Hugging Face Hub (CC0) |
 
 > **Scope:** the index covers **titles and abstracts**, not full text. It is strong at
 > "which papers address X and how do their approaches compare?", and not at "what learning rate did paper Y use?".
@@ -79,7 +80,14 @@ cp .env.example .env           # optional: choose the GPU (CUDA_VISIBLE_DEVICES)
 jupyter lab
 ```
 
-Run the notebooks in order with the **Python (arxivsage)** kernel:
+**Fast path (~5 min):** download the prebuilt data instead of harvesting and embedding it, then run
+notebook 02, which reuses the embeddings and only builds the Weaviate index:
+
+```bash
+python download_data.py        # papers, chunks and embeddings (~1.5 GB) into data/
+```
+
+**Full build:** run the notebooks in order with the **Python (arxivsage)** kernel:
 
 | Notebook | Stage | Time | Output |
 |---|---|---|---|
@@ -110,6 +118,7 @@ pip install --no-deps langchain-huggingface==1.2.3   # keeps huggingface-hub 2.x
 ```text
 ArxivSage/
 ├── common.py                    # configuration: paths, models, chunk sizes, ports, Weaviate client
+├── download_data.py             # fetches the prebuilt data from the Hugging Face Hub
 ├── 01_collect_data.ipynb        # OAI-PMH harvest → filter → papers.jsonl
 ├── 02_chunk_embed_index.ipynb   # mixed chunking → bi-encoder → Weaviate
 ├── 03_rag_pipeline.ipynb        # HyDE → hybrid search → rerank → cited answer (+ ablation)

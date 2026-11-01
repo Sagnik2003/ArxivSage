@@ -27,6 +27,7 @@ DATA_DIR = PROJECT_DIR / "data"
 PAPERS_PATH = DATA_DIR / "papers.jsonl"              # step 1 output: one paper per line
 CHUNKS_PATH = DATA_DIR / "chunks.jsonl"              # step 2 output: one chunk per line
 EMBEDDINGS_PATH = DATA_DIR / "chunk_embeddings.npy"  # step 2 output: row i = vector of chunk i
+HF_DATASET = "Sagnik2003/arxivsage-cv-nlp"            # prebuilt data on the Hugging Face Hub (download_data.py)
 WEAVIATE_DIR = PROJECT_DIR / "weaviate_data"         # Weaviate's on-disk storage
 DATA_DIR.mkdir(exist_ok=True)
 
