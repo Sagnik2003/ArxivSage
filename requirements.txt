@@ -1,0 +1,14 @@
+weaviate-client==4.24.1
+sentence-transformers==6.2.0
+transformers==5.22.1
+accelerate==1.15.0
+flash-linear-attention==0.6.0
+torch==2.15.0
+numpy==2.4.6
+pandas==3.1.0
+requests==2.34.2
+tqdm==4.70.1
+matplotlib==3.11.2
+jupyter==1.1.1
+ipykernel==7.4.0
+ipywidgets==8.1.9

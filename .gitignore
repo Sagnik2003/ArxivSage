@@ -1,0 +1,13 @@
+# generated data (rebuild with notebooks 01-02)
+data/
+weaviate_data/
+logs/
+
+# local config
+.env
+
+# python / jupyter
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
