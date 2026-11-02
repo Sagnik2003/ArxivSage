@@ -17,7 +17,7 @@ The system runs entirely **locally at no cost**: open data, open models, an embe
 <p align="center"><img src="docs/retrieval_funnel.svg" alt="Retrieval funnel" width="100%"></p>
 
 **Query flow:**
-1. **Query rewriting** (chat only). A follow-up is rewritten into a standalone question from the conversation history.
+1. **Routing** (chat only). An LLM reads the conversation and decides whether a follow-up can be answered from the previous papers, skipping steps 2–6, or needs a new search, in which case it is rewritten into a standalone question.
 2. **HyDE.** An LLM writes a hypothetical abstract that would answer the question and extracts filters (years and categories in notebook 03; years only in notebook 04).
 3. **Query vector.** The question and the hypothetical abstract are embedded with the same BGE bi-encoder and averaged.
 4. **Hybrid search.** Weaviate runs BM25 on the question and HNSW vector search on the query vector, fuses the two lists (α = 0.6) and returns 50 chunks.
@@ -29,10 +29,10 @@ The system runs entirely **locally at no cost**: open data, open models, an embe
 
 <p align="center"><img src="docs/chat_ui_demo.png" alt="ArxivSage chat interface" width="85%"></p>
 
-Chat interface from notebook 04, showing a real session. The follow-up *"Which of those methods don't need
-any extra training?"* is rewritten into a standalone query from the conversation (*searched for* line),
-answers stream token by token with numbered citations, and the status line reports per-stage latency
-(first token after ~4–5 s).
+Chat interface from notebook 04, showing a real session. The follow-up *"Which of those use knowledge distillation?"*
+is answered from the same six papers with no new search, because the model decides it refers back to them. The
+out-of-scope quantum question runs a new search, and the abstain gate declines it without calling the answer model.
+The status lines report per-stage latency.
 
 ## Tech stack
 
@@ -47,8 +47,8 @@ answers stream token by token with numbered citations, and the status line repor
 | Re-ranking | `BAAI/bge-reranker-v2-m3` (**cross-encoder**), best chunk per paper | precise top 6 from a high-recall candidate set |
 | Generation | `Qwen/Qwen3.5-9B` via **Hugging Face Transformers** (bf16), with an abstain gate | strong open model, runs in-process, follows citation rules |
 | Orchestration | plain Python (notebook 03), **LangChain LCEL** (notebook 04) | explicit control vs. composable, streamable chains |
-| Conversation memory | query rewriting (Qwen3.5-2B) + LangChain `SummarizationMiddleware` | follow-ups resolved before retrieval; bounded history |
-| Interface | `ask()` (notebook 03), **ipywidgets chat UI** with token streaming (notebook 04) | first token after ~4–5 s |
+| Conversation memory | LLM routing of follow-ups (Qwen3.5-9B) + LangChain `SummarizationMiddleware` | follow-ups stay on the papers they refer to; bounded history |
+| Interface | `ask()` (notebook 03), **ipywidgets chat UI** with token streaming (notebook 04) | first token after ~2–5 s |
 
 ## Dataset
 
@@ -94,7 +94,7 @@ python download_data.py        # papers, chunks and embeddings (~1.5 GB) into da
 | `01_collect_data.ipynb` | arXiv metadata harvest | ~8 min | `data/papers.jsonl` |
 | `02_chunk_embed_index.ipynb` | chunking, embedding (GPU), Weaviate index | ~10 min | `data/chunk_embeddings.npy`, `weaviate_data/` |
 | `03_rag_pipeline.ipynb` | RAG pipeline, examples, ablation | ~20 s / question | — |
-| `04_langchain_version.ipynb` | LangChain implementation with streaming chat UI and memory | first token ~4–5 s | — |
+| `04_langchain_version.ipynb` | LangChain implementation with streaming chat UI and memory | first token ~2–5 s | — |
 
 Notebooks 01 and 02 run once. Notebook 03 exposes the pipeline as a function:
 
@@ -106,7 +106,7 @@ ask("Benchmarks for multimodal LLM reasoning", categories=["cs.CV"], year_from=2
 Notebook 04 requires LangChain (not in `requirements.txt`):
 
 ```bash
-pip install langchain==1.4.7 langchain-weaviate==0.0.8
+pip install langchain==1.4.7 langchain-weaviate==0.0.8 langchain-text-splitters==1.1.3
 pip install --no-deps langchain-huggingface==1.2.3   # keeps huggingface-hub 2.x for transformers
 ```
 
@@ -162,11 +162,13 @@ a cross-encoder score gate that refuses **before** calling the LLM, and source c
 **latest version**, not the first submission. Filtering on it admitted ~12k older papers that had only
 been revised. The v1 submission month is taken from the arXiv ID instead (`2509.22630` → 2025-09).
 
-**7. Conversation memory through query rewriting (notebook 04).** Follow-ups ("which of *those*…") are
-rewritten into standalone questions before retrieval, since retrieval cannot resolve references.
-The answer step sees only the rewritten question and its sources: with the chat history in the prompt,
-the model reused claims from earlier answers. Older turns are compressed by LangChain's
-`SummarizationMiddleware`, which runs after the answer is displayed.
+**7. Follow-ups routed by the model (notebook 04).** A new search answers "which of *those*" badly, because it
+replaces the papers the user is asking about. An LLM router reads the conversation and sends each follow-up either
+to the previous papers, with no new search, or to the full pipeline. There are no keyword rules. On 22 test follow-ups
+the 9B routed all correctly and the 2B 14, so routing runs on the 9B; since the 9B was selected on those same cases,
+that score is likely optimistic. The answer step sees earlier questions but never earlier answers, so old citation
+numbers cannot point at the wrong papers. Older turns are compressed by LangChain's `SummarizationMiddleware`, which
+runs after the answer is displayed.
 
 **8. Model split for latency (notebook 04).** HyDE output is never shown, so it runs on Qwen3.5-2B while
 the 9B writes answers. Over 8 questions the 2B's hypothetical abstracts retrieved as well as the 9B's
@@ -202,7 +204,7 @@ All knobs live in [`common.py`](common.py):
 | `EMBED_MODEL` | `BAAI/bge-large-en-v1.5` | bi-encoder |
 | `RERANK_MODEL` | `BAAI/bge-reranker-v2-m3` | cross-encoder |
 | `LLM_MODEL` | `Qwen/Qwen3.5-9B` | any Hugging Face chat model (e.g. `Qwen/Qwen3.5-4B` for ~9 GB VRAM) |
-| `FAST_LLM_MODEL` | `Qwen/Qwen3.5-2B` | notebook 04 only: small model for HyDE, query rewriting and chat summaries |
+| `FAST_LLM_MODEL` | `Qwen/Qwen3.5-2B` | notebook 04 only: small model for HyDE and chat summaries |
 
 Retrieval knobs (`ALPHA`, `N_CANDIDATES`, `TOP_K_PAPERS`, `MIN_RERANK_SCORE`) are defined next to the code that uses them in notebook 03.
 

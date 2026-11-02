@@ -54,7 +54,7 @@ EMBED_MODEL = "BAAI/bge-large-en-v1.5"   # bi-encoder, 1024-d
 QUERY_INSTRUCTION = "Represent this sentence for searching relevant passages: "
 RERANK_MODEL = "BAAI/bge-reranker-v2-m3" # cross-encoder used for re-ranking
 LLM_MODEL = "Qwen/Qwen3.5-9B"            # Hugging Face, loaded in bf16 (~18 GB VRAM)
-FAST_LLM_MODEL = "Qwen/Qwen3.5-2B"       # notebook 04: small model for HyDE / query rewriting / summaries (~4.5 GB)
+FAST_LLM_MODEL = "Qwen/Qwen3.5-2B"       # notebook 04: small model for HyDE and summaries (~4.5 GB)
 
 # ----------------------------------------------------------------------------
 # Weaviate (step 2 + 3)
